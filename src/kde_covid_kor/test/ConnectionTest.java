@@ -1,4 +1,4 @@
-package test;
+package kde_covid_kor.test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
