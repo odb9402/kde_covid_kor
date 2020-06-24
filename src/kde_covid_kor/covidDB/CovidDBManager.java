@@ -2,18 +2,19 @@ package kde_covid_kor.covidDB;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
+//import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class CovidDBManager{
     /*
     MySQL database on the Docker container : covid-sql
     */
-    private final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
+    private final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
     private final String DB_URL = "jdbc:mysql://172.17.0.5/covid_kor";
     
     private final String USER_NAME = "ro_covid";
@@ -48,9 +49,9 @@ public class CovidDBManager{
         System.out.println("[MySQL Connection is closed]\n");
     }
     
-    public ArrayList<Trajectory> selectPatientTrajectory(){
-        ArrayList<Trajectory> trajectories = new ArrayList<Trajectory>();
-        EllipticalMercator projecter = new EllipticalMercator();
+    public List<Trajectory> selectPatientTrajectory(){
+        List<Trajectory> trajectories = new ArrayList<Trajectory>();
+        Mercator projecter = new EllipticalMercator();
 
         // get values using SQL qurey
         final String query = "SELECT info.patient_id, info.disease, route.date, "
@@ -67,8 +68,8 @@ public class CovidDBManager{
             boolean oversea;
 
             while(rs.next()){
-                x = projecter.xAxisProjection(rs.getDouble(6));
-                y = projecter.yAxisProjection(rs.getDouble(7));
+                x = projecter.xAxisProjection(rs.getDouble(6) + rs.getDouble(7));
+                y = projecter.yAxisProjection(rs.getDouble(6));
 
                 if(rs.getString(8).equals("overseas inflow")){
                     oversea = true;
@@ -79,9 +80,9 @@ public class CovidDBManager{
                 else{
                     continue;
                 }
-                trajectories.add(new Trajectory(x, y, rs.getDate(3)
+                trajectories.add(new Trajectory(x, y, rs.getDate(3).getTime()
                     , rs.getString(5), rs.getInt(4), rs.getLong(1), oversea));
-                System.out.println("ADD trajectory for " + rs.getString(1));
+                //System.out.println("Date:" + rs.getDate(3).getTime());
                 }
         }
         catch(SQLException e){

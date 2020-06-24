@@ -7,8 +7,5 @@ public class TrajectoryTest {
         System.out.println("Test");
         TrajectoryData newData = new TrajectoryData();
         newData.loadTrajectories();
-        
-        System.out.println("SIZE OF THE TRAJECTORIES " + newData.getTrajectories().size());
-
     }
 }

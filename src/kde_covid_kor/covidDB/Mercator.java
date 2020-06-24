@@ -1,6 +1,5 @@
 package kde_covid_kor.covidDB;
 
-import java.lang.Math;
 
 /*
 Convert GPS to X, Y axis using Mercator Projections.
