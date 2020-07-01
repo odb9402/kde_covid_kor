@@ -13,6 +13,11 @@ public class Trajectory implements Serializable {
     private int contactNum;
     private long id;
     
+    
+    public Trajectory(){
+        
+    }
+
     public Trajectory(double x, double y, double time, String type, int contactNum,
         long id, boolean oversea){
         this.x = x;
