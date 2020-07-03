@@ -22,4 +22,5 @@ public class EllipticalMercator extends Mercator {
     double xAxisProjection(double input) {
         return RADIUS_MAJOR * Math.toRadians(input);
     }
+ 
 }

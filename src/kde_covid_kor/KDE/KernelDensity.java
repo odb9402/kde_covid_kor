@@ -49,6 +49,8 @@ public class KernelDensity  {
     private double variancey;
 
     private double sd;
+    
+    private double sdxy;
     /**
      * The variance.
      */
@@ -61,81 +63,65 @@ public class KernelDensity  {
      */
     private JavaRDD<double[]> myRdd;
     
-    public KernelDensity(JavaSparkContext sc,double[][] data ) {
+    public KernelDensity(JavaSparkContext sc, double[][] data , boolean h_on , boolean weight_on, String silver  ) {    //h_on ==1 이면 iqr 분위수 작동(sigma가 작다면 작동 안할수도있음)    silver== 1  1/3silver == 2 
         
         
         double[][] data_ = new double[data.length][3];
         double[] x = new double[data.length];
         double[] y = new double[data.length];
+        double weightSum = 0.0;
         for (int i =0 ;i<data.length; i++){
             x[i]=data[i][0];
             y[i]=data[i][1];
             data_[i][0] = data[i][0];
             data_[i][1] = data[i][1];
-            data_[i][2] = 1;
+            if(!weight_on){
+                data_[i][2] = 1;
+                weightSum=data.length;
+            }else{
+                data_[i][2] = data[i][2];
+                weightSum += data[i][2];
+            }
         }
-        this.x = x;
-        this.y = y;
-        this.data = data_;
-        this.mean = mean(x);
-        this.weight_sum = data.length;
-        this.variance = Math.pow(sd(x),2);
-        this.sd = Math.sqrt(variance);
-        this.variancey = Math.pow(sd(y),2);
-        this.sdy = Math.sqrt(variancey);
-        
-
-        Arrays.sort(x);
-        Arrays.sort(y);
-
-        int n = x.length;
-        double iqr = 1./2. * (x[n*3/4] - x[n/4]  +  y[n*3/4] - y[n/4]);
-        h = 1.06 * Math.min( Math.sqrt(sdy*sd), iqr/1.34) / Math.pow(x.length, 0.2);
-        
-        //gaussian = new GaussianDistribution(0, h);
-        myRdd = sc.parallelize(Arrays.asList(this.data));
-        
-    }
-
-    public KernelDensity(JavaSparkContext sc,double[][] data ,double[]  weight_ ) {          // weight overloading
-        
-        
-        double weightSum = 0;
-        double[] x = new double[data.length];
-        double[] y = new double[data.length];
-        
-        double[][] data_ = new double[data.length][3];
-
-        for (int i =0 ;i<data.length; i++){
-            x[i]=data[i][0];
-            y[i]=data[i][1];
-            data_[i][0] = data[i][0];
-            data_[i][1] = data[i][1];
-            data_[i][2] = weight_[i];
-            weightSum += weight_[i];
-        }
-        this.x = x;
-        this.y = y;
-
         this.weight_sum = weightSum;
-
+        this.x = x;
+        this.y = y;
         this.data = data_;
         this.mean = mean(x);
         this.variance = Math.pow(sd(x),2);
         this.sd = Math.sqrt(variance);
         this.variancey = Math.pow(sd(y),2);
         this.sdy = Math.sqrt(variancey);
-        
+        this.sdxy = Math.sqrt(variance+variancey);
 
         Arrays.sort(x);
         Arrays.sort(y);
 
         int n = x.length;
-        double iqr = 1./2. * (x[n*3/4] - x[n/4]  +  y[n*3/4] - y[n/4]);
-        h = 1.06 * Math.min( Math.sqrt(sdy*sd), iqr/1.34) / Math.pow(x.length, 0.2);
-        //h = 1.06 *  Math.sqrt(sdy*sd) / Math.pow(x.length, 0.2);
+        //double iqr = 1./2. * (x[n*3/4] - x[n/4]  +  y[n*3/4] - y[n/4]);
+        //h = 1.06 * Math.min( sdxy, iqr/1.34) / Math.pow(x.length, 0.2);
+
+        if(silver == "silver"){   ///  silverman
+            if( h_on==true ){
+                double iqr = Math.sqrt( Math.pow(x[n*3/4] - x[n/4] ,2)  +  Math.pow(y[n*3/4] - y[n/4] ,2));     /// robust
+                //h = 1.06 * Math.min( sdxy, iqr/1.34) / Math.pow(x.length, 0.2);
+                h = Math.pow(1.0/x.length , 1./6)*Math.min( sdxy, iqr/1.34);
+                
+            }else{
+                h = Math.pow(1.0/x.length , 1./6)* sdxy;
+            }
+        }else if(silver == "const" ){   // 1/3 * silverman
+            if( h_on==true ){
+                double iqr = Math.sqrt( Math.pow(x[n*3/4] - x[n/4] ,2)  +  Math.pow(y[n*3/4] - y[n/4] ,2));     /// robust
+                h = 1/3. * Math.pow(1.0/x.length , 1./6)*Math.min( sdxy, iqr/1.34);
+            }else{
+                h = 1/3. * Math.pow(1.0/x.length , 1./6)* sdxy;
+            }
+        }
         
-        
+
+
+        //gaussian = new GaussianDistribution(0, h);
         myRdd = sc.parallelize(Arrays.asList(this.data));
         
     }
@@ -167,6 +153,7 @@ public class KernelDensity  {
         this.mean = mean(x);    // mean of vector
         this.variance = Math.pow(sd(x),2);
         this.sd = Math.sqrt(variance);
+        
        
         myRdd = sc.parallelize(Arrays.asList(this.data));
         Arrays.sort(x);
@@ -277,9 +264,12 @@ public class KernelDensity  {
         double sd=0;
 
         for (int i = 0; i < m.length; i++) {
-            sd += Math.pow(m[i]-mean ,2);
+            sd += Math.pow(m[i]-mean ,2)/(m.length-1);
         }
 
         return Math.sqrt(sd);
+    }
+    public double getSdxy(){
+        return this.sdxy;
     }
 }

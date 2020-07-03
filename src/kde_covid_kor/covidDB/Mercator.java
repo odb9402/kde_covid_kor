@@ -13,4 +13,6 @@ public abstract class Mercator {
  
     abstract double yAxisProjection(double input);
     abstract double xAxisProjection(double input);
+
+  
 }
